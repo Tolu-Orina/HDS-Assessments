@@ -13,6 +13,9 @@ library(ggplot2) # Import ggplot2 for better visualizations
 library(stringr)
 library(lubridate)
 library(tools)
+library(dunn.test) # For Carrying out Post-hoc statistical test
+library(FSA) # Statistical Analysis
+library(broom) # To Allow for tidying the statistical test results
 
 
 # Connect to the PostgreSQL Database
@@ -231,7 +234,6 @@ print(plot_of_top_5_pres_drugs_each_month)
 # Primary Prevention Of Cardiovacular Disease
 # Palliative Care
 # - How many patients in the Swansea Health boards are ascribed to that indicator
-# - What GP practices participated for the selected QOF indicator
 # ------------------------------------------------------------------------------
 
 # HELPER FUNCTION TO CHECK USER INPUT
@@ -352,18 +354,16 @@ if (is.character(selected_qof_area)) {
 prescriptions_2015 <- swansea_gp_data %>%
                             filter(grepl('2015', period)) %>% # Filter for 2015
                             mutate(
-                              total_cost = round(actcost * quantity, 2)
+                              total_cost = round(actcost * items, 2)
                                    ) # total cost for each prescription
-                            
-total_cost_2015 <- prescriptions_2015 %>%
-                    summarize(total_cost = sum(total_cost))
+
+View(prescriptions_2015)
 
 total_cost_2015_per_month <- prescriptions_2015 %>%
                               group_by(period) %>%
                               summarize(total_2015 = sum(total_cost)) 
 
-
-View(prescriptions_2015)
+View(total_cost_2015_per_month)
 
 # The expenditure on drugs within each locality in each month in 2015
 total_cost_2015_per_month_per_locality <- prescriptions_2015 %>%
@@ -392,5 +392,17 @@ plot_cost_each_locality <- total_cost_2015_per_month_per_locality %>%
 
 print(plot_cost_each_locality)
 
-# ------------------------------------------------------------------------------
+# Choose Select columns from the BNF table
+bnf_sub <- bnf_data %>%
+  select(bnfchemical, chemicaldesc)
 
+# TOP 5 EXPENSIVE DRUGS IN SWANSEA FOR 2015
+top_5_expensive_drugs_in_swansea <- prescriptions_2015 %>%
+  mutate(bnfcode = substr(bnfcode, 1, 9)) %>%
+  inner_join(bnf_sub, by = c("bnfcode" = "bnfchemical")) %>%
+  group_by(chemicaldesc) %>%
+  summarize(avg_cost = mean(total_cost)) %>%
+  head(n=5)
+
+View(top_5_expensive_drugs_in_swansea)
+# ------------------------------------------------------------------------------

@@ -9,11 +9,13 @@
 library(RPostgreSQL)    # To access the database.
 library(GetoptLong)     # To substitute variables into strings.
 library(tidyverse)  # To make use of the many functions available in the tidyverse
-library(ggplot2) # To create Visualizations
+library(ggplot2) # Import ggplot2 for better visualizations
+library(stringr)
+library(lubridate)
+library(tools)
 library(dunn.test) # For Carrying out Post-hoc statistical test
 library(FSA) # Statistical Analysis
 library(broom) # To Allow for tidying the statistical test results
-
 
 
 # Connect to the PostgreSQL Database
@@ -372,7 +374,8 @@ bnf_query =  "
               select bnfchemical, subsectiondesc
               from bnf 
               "
-# BNF TABLE contains the bnf chemical and the generalized class of drug it belongs to
+# BNF TABLE contains the bnf subsectiondesc which describes 
+# the generalized class of drug it belongs to
 bnf_df <- dbGetQuery(con, bnf_query)
 View(bnf_df)
 
@@ -402,7 +405,9 @@ if (is.character(healthboard)) {
   View(gp_practices_in_hb)
   
   # Get the practices in the healthboard
-  gp_practices_in_hb_vec <- pull(gp_practices_in_hb, "practiceid")
+  gp_practices_in_hb_vec <- gp_practices_in_hb %>%
+                              mutate(practiceid = trimws(practiceid)) %>%
+                              pull(practiceid)
   
   cat(gp_practices_in_hb_vec, sep="\n")
   gp_practice <- check_if_in_vec(gp_practices_in_hb_vec, desired_value="GP Practice")
@@ -435,7 +440,8 @@ if (is.character(healthboard)) {
     top_5_prescriptions <- drug_class_data %>%
                             group_by(subsectiondesc) %>%
                             summarise(num_prescriptions = n()) %>%
-                            slice_max(order_by = num_prescriptions,n=5) %>%
+                            arrange(desc(num_prescriptions))%>%
+                            head(5) %>%
                             mutate(subsectiondesc = trimws(subsectiondesc))
     
     View(top_5_prescriptions)
