@@ -29,9 +29,8 @@ We will take the model shown in the diagram above whilst answering these specifi
 
 **QUESTION 2**: This task receives an input (in th form of an Healthboard name) from the user. It answers the question that, for a given health board, what are the GP practices within that Healthboard? What is the most prevalent three conditions in the Health Board? displays the prevalence for these conditions in the Health Board and the prevalence of these conditions in each GP practices in that Health board
 
-STEP 1: Copy Lines 220 to 256 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code effectively implements a function to check the correctness of the user input and prevent scientific notations
-
-STEP 2: Copy Lines 258 to 
+- **STEP 1**: Copy Lines 220 to 256 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code effectively implements a function to check the correctness of the user input and prevent scientific notations.
+- **STEP 2**: Copy Lines 258 to 
 
 
 
