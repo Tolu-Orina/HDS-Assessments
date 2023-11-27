@@ -1,6 +1,8 @@
 ## PMIM102-SUBMISSION
 
 ### SETUP
+Open R Studio, Click on File and click New Project, in the dialog opened,
+choose Version Control, select Git, enter 
 
 
 
