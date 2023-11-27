@@ -11,6 +11,8 @@ library(GetoptLong)     # To substitute variables into strings.
 library(tidyverse)  # To make use of the many functions available in the tidyverse
 library(ggplot2) # To create Visualizations
 library(broom) # TO Allow for tidying the statistical test results
+library(dunn.test)
+library(FSA)
 
 
 # Connect to the PostgreSQL Database
@@ -217,7 +219,7 @@ healthboard_comparison_table <- hb_practice_name_data %>%
 View(healthboard_comparison_table)
 # ------------------------------------------------------------------------------
 
-# TASK 2: UESR PROMPTS for Health Board name.
+# TASK 2: USER PROMPTS for Health Board name.
 # OUTPUTS: 
 #   1. A list of the GP Practices in that Health Board
 #   2. The Three (3) Most prevalent conditions in the Health Board 
@@ -343,7 +345,7 @@ if (is.character(healthboard)) {
       practice_plot <- ggplot(practice_prevalence_df, aes(area, prevalence)) +
         geom_col(fill = "lightblue") + 
         labs(
-          title = qq("Three (3) Most Prevalent Disease Conditions within '@{current_practice}' "),
+          title = qq("Three (3) Most Prevalent Disease Conditions within '@{current_practice}' GP Practice"),
           x = "Disease Condition",
           y = "Prevalence count") +
         theme(axis.text.x = element_text(angle = 30,
@@ -366,7 +368,7 @@ if (is.character(healthboard)) {
 # Write a query to get the bnf data
 bnf_query =  "
               -- load in the bnf table for the question
-              -- select bnfchemical, subsectiondesc
+              select bnfchemical, subsectiondesc
               from bnf 
               "
 # BNF TABLE contains the bnf chemical and the generalized class of drug it belongs to
@@ -443,8 +445,7 @@ if (is.character(healthboard)) {
                           geom_col(color='black',fill='cyan3')+
                           labs(x='Type of Drug', y="Number of prescriptions",
                                title= qq(
-                                 "Five(5) Most Prescribed types of drugs in '@{gp_practice}'
-                                   ")) +
+                        "Five(5) Most Prescribed types of drugs in '@{gp_practice}' GP Practice")) +
                           theme(axis.text.x = element_text(angle = 30,
                                                   hjust=0.8))
     print(top_5_presc_plot)
@@ -482,6 +483,8 @@ hb_test_data <- dbGetQuery(con, hb_test_query)
 
 
 # Group by Health board and period (month)
+# Seeing we are looking for the average gp practice spend in each health board
+# Thus the health board serves as the reference point
 avg_gp_spend_per_month_df <- hb_test_data %>%
                               inner_join(hb_name_df,
                                          by = c("hb" = "practiceid")) %>%
@@ -496,8 +499,6 @@ avg_gp_spend_per_month_df <- hb_test_data %>%
 View(avg_gp_spend_per_month_df)
 
 # Does the health board explain the avg_gp_spend_per_month: 
-# We make use of a One-sided ANOVA (taking the health boards as the independent variable 
-#####                   and seeing we have more than two health boards)
 labels = hb_names
 # First: Visualize the avg_spend distribution of each health board on a boxplot
 plot_avg_spend_hbs <- ggplot(avg_gp_spend_per_month_df,
@@ -514,11 +515,22 @@ print(plot_avg_spend_hbs)
 # From the plot, there seems to be a difference between the monthly spend
 # in the distributions amongst a few of the healthboards  
 
-# Secondly: Carry out an ANOVA test
-# 3 assumptions
+
+
+# Secondly: To Carry out an ANOVA test
+# First confirm the 4 assumptions
 # 1. Observations in each health board is independent
 # 2. Observations are approximately distributed between groups (i.e health boards)
 # 3. Variances approximately equal within each of the groups
+# 4. Normally distributed mean values for the dependent variable across the groups
+
+# Numerical comparison of the variance within each health board
+num_var_btw_hb <- avg_gp_spend_per_month_df %>%
+  group_by(healthboard_name) %>%
+  summarise(var(avg_gp_spend_per_month, na.rm = TRUE))
+
+View(num_var_btw_hb)
+# Most of the variances are equal
 
 # One more visualization to help view the distributions: Histogram
 dist_plot <- ggplot(avg_gp_spend_per_month_df, aes(x=avg_gp_spend_per_month)) + 
@@ -530,47 +542,46 @@ dist_plot <- ggplot(avg_gp_spend_per_month_df, aes(x=avg_gp_spend_per_month)) +
 
 print(dist_plot)
 
-# Numerical comparison of the variance within each health board
-num_var_btw_hb <- avg_gp_spend_per_month_df %>%
-                    group_by(healthboard_name) %>%
-                    summarise(var(avg_gp_spend_per_month, na.rm = TRUE))
-
-# View(num_var_btw_hb)
-
-# Proceed with ANOVA as the assumptions do seem to follow
-anova_model <- aov(avg_gp_spend_per_month ~ healthboard_name,
-                   data= avg_gp_spend_per_month_df)
-
-print("DISPLAYING THE ANOVA RESULTS ........")
-cat("\n")
+# From the Avg. Spend Distribution Plots appears non-normal, we would go on to perfom 
+# A NON-PARAMETRIC TEST equivalent to ANOVA, i.e the Kruskal-Wallis test,
+# The Kruskal-Wallis test is a Rank-based method that orders grouped continuous data 
+# from smallest to largest and assigns a rank
 
 options(scipen = 999) # Prevent scientific notation
 
-anova_df <- avg_gp_spend_per_month_df %>%
-              aov(avg_gp_spend_per_month ~ healthboard_name, data= .) %>%
-              tidy()
+kruskal_result <- avg_gp_spend_per_month_df %>%
+                    kruskal.test(avg_gp_spend_per_month ~ healthboard_name, data= .) %>%
+                    tidy()
 
-View(anova_df) # View the results
+print("DISPLAYING KRUSKAL WALLIS RESULTS ........")
+cat("\n")
+View(kruskal_result)
+
 # With a sigificance level of .05, we can say that 
 # there is a statistical significance btw the avg practice spend per month
 # btw the various healthboards seeing our p-value is less than
 # the chosen significance level of .05. Thus we reject the null hypothesis
 # that there is no difference between avg practice spend per month
 # btw the various healthboards
-cat("\n")
-# Run a Post-hoc tuckey test to see where differences lie
-tuckey_res <- avg_gp_spend_per_month_df %>%
-                aov(avg_gp_spend_per_month ~ healthboard_name, data= .) %>%
-                TukeyHSD() %>%
-                tidy() %>%
-                arrange(adj.p.value) %>%
-                select(contrast, adj.p.value)
-View(tuckey_res) # View the tuckey results
-# From the Tuckey test, a larger proportion of the difference
-# btw various hbs are statistically significant,
+ 
+# Carry out a Dunn's Post-hoc Test to see where differences lie
+dunn_test <- dunnTest(avg_gp_spend_per_month_df$avg_gp_spend_per_month,
+               avg_gp_spend_per_month_df$healthboard_name,
+               method = "bonferroni")
+
+dunn_result <- dunn_test$res %>%
+                  arrange(P.adj)
+print("Ignore the error from above, it arranges it")
+
+# View the Results from the Dunn Post-hoc Test
+View(dunn_result)
+
+# From the Dunn's test, some difference in average GP practice spend between
+# various hbs are statistically significant,
 # however the differences between some health boards doesn't seem to be significant
 # Just as observed in the boxplots, a few of the signifcant ones are;
-# - Powys Teaching HB - Cardiff & Vale University HB
-# - Powys Teaching HB - Betsi Cadwaladr University HB
-# - Powys Teaching HB - Hywel Dda HB
-# - Cwm Taf HB-Cardiff & Vale University HB
+# Cardiff & Vale University HB - Powys Teaching HB
+# Betsi Cadwaladr University HB - Powys Teaching HB 
+# Hywel Dda HB - Powys Teaching HB 
+# Cardiff & Vale University HB - Cwm Taf HB
+# and more .....
