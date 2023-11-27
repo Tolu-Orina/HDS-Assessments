@@ -1,6 +1,7 @@
 ## PMIM102-SUBMISSION
 
 ### SETUP
+
 - Open R Studio, Click on File and click New Project.
 - In the dialog that opens, choose Version Control, select Git, and enter https://github.com/Tolu-Orina/HDS-Assessments.git for the Repository URL. Enter a directory name and choose a sub-directory of your choice.
 - Click Create Project, and a new session of the R-studio will be opened with the directory name entered.
