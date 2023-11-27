@@ -10,9 +10,10 @@ library(RPostgreSQL)    # To access the database.
 library(GetoptLong)     # To substitute variables into strings.
 library(tidyverse)  # To make use of the many functions available in the tidyverse
 library(ggplot2) # To create Visualizations
-library(broom) # TO Allow for tidying the statistical test results
-library(dunn.test)
-library(FSA)
+library(dunn.test) # For Carrying out Post-hoc statistical test
+library(FSA) # Statistical Analysis
+library(broom) # To Allow for tidying the statistical test results
+
 
 
 # Connect to the PostgreSQL Database
