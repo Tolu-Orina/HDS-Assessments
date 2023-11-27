@@ -5,10 +5,10 @@
 - Open R Studio, Click on File and click New Project.
 - In the dialog that opens, choose Version Control, select Git, and enter https://github.com/Tolu-Orina/HDS-Assessments.git for the Repository URL. Enter a directory name and choose a sub-directory of your choice.
 - Click Create Project, and a new session of the R-studio will be opened with the directory name entered.
-- Navigate into the PMIM102-submission folder in the right portion in the r-studio under files, Click on part1.R and part2.R to open them.
-- Click File on the toolbar then click New File and select R script, use ctrl + S or Cmd + S to save and rename the newly created script.
+- Navigate into the PMIM102-submission folder in the right portion of the r-studio under files, Click on part1.R and part2.R to open them.
+- Click File on the toolbar, then click New File, and select R script, Use ctrl + S or Cmd + S to save and rename the newly created script.
 
-Before moving on, install the following packages using install.packages("<package-name>");
+***Before moving on, install the following packages using install.packages("<package-name>");***
 - RPostgreSQL
 - GetoptLong
 - Tidyverse
@@ -36,14 +36,35 @@ We will take the model shown in the diagram above whilst answering these specifi
 - **STEP 4**: Copy Lines 138 to 185 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code combines the total number of patients and qof total table to the gp practice prescription data for 2015 and calculates the overall total patients in each healthboard and the average numbber of QOF in each healthboard and goes on in lines 172 to 185 to calculate the average spend for each GP practice per month.
 - **STEP 5**: Copy Lines 187 to 217 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code combines the table for healthboard name from STEP 2 with the total number of patients and total numebr of qof reported for eacch practice, the average spend per GP practice per month table and the gp practice data for 2015, finally we calculate the number of distinct GP practices within the health board and get the resulting table that answers question 1
 
-**QUESTION 2**: This task receives an input (in th form of an Healthboard name) from the user. It answers the question that, for a given health board, what are the GP practices within that Healthboard? What is the most prevalent three conditions in the Health Board? displays the prevalence for these conditions in the Health Board and the prevalence of these conditions in each GP practices in that Health board
+**QUESTION 2**: This task receives an input (in the form of an Healthboard name) from the user. It answers the question that, for a given health board, what are the GP practices within that Healthboard? What is the most prevalent three conditions in the Health Board? displays the prevalence for these conditions in the Health Board and the prevalence of these conditions in each GP practices in that Health board
 
 - **STEP 1**: Copy Lines 220 to 256 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code effectively implements a function to check the correctness of the user input and prevent scientific notations.
-- **STEP 2**: Copy Lines 258 to 
+- **STEP 2**: Copy Lines 258 to 358 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code get the GP practices from the selected healthboard, checks for the most prevalent conditions in the healthboard and in each gp practice and then generates plot for them.
 
 
+**QUESTION 3**: This task receives an input (in the form of an Healthboard name and then a GP practice within that healthboard) from the user. It then answers the question, what are the five (5) most prescribed types of drugs in that practice?
 
+- **STEP 1**: Copy lines 362 to 377 from part1.R and paste them beneath the code in your .R file, click the source button, These lines of code get the bnf subsectiondesc, which describes the generalized class of drug a particular medication prescription belongs to.
 
-### STEP 2
-cd HDS-Assessments/PMIM102-submission
+- **STEP 2**: Copy lines 362 to 461 from part1.R and paste beneath the code in your .R file, Click the Source button. These lines of code are used to filter for the data containing the selected GP practice prescriptions in the GP prescriptions data and then join it to the subsectiondesc column gotten from the BNF table in Step 1 above. It goes on to display the tabular and graphical results.
+
+***N.B.: Some GP practices have only one or a few prescriptions recorded in the dataset.***
+
+**QUESTION 4**: HYPOTHESIS TEST TO ANSWER THE QUESTION: IS THERE A, STATISTICALLY SIGNIFICANT, DIFFERENCE BETWEEN THE AVGERAGE GP PRACTICE
+SPEND PER MONTH BETWEEN HEALTH BOARDS?
+
+1. NULL HYPOTHESIS, H0: THERE IS NO DIFFERENCE BETWEEN THE AVG GP PRACTICE SPEND PER MONTH BETWEEN HEALTH BOARDS, i.e., MEAN_SPEND OF HB A - MEAN_SPEND OF HB B = 0, MEAN_SPEND OF HB B - MEAN_SPEND OF HB C = 0,...
+2. ALTERNATIVE HYPOTHESIS, H1: THERE IS A DIFFERENCE BETWEEN THE AVG GP PRACTICE SPEND PER MONTH BETWEEN HEALTH BOARDS, I.E MEAN_SPEND OF HB A - MEAN_SPEND OF HB B ≠ 0, MEAN_SPEND OF HB B - MEAN_SPEND OF HB C ≠ 0, .....
+
+- **STEP 1**: Copy lines 465 to 502 from part1.R and paste beneath the code in your .R file, click the source button. These lines of code
+extracts the data needed to conduct the hypothesis test in order to answer the research question. Seeing we are looking for the average gp practice spend per month in each health board, the health board serves as the reference point, that is a group by Health board and then by month to get the resulting average spend
+
+- **STEP 2**: Copy Lines 503 to 551 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code
+generates plot to see if the dependent variable follows the assumptions that satisfy using the anova parametric test. The Plots do not lend confidence to satisfy the assumptions, especially the normality of the distribution; thus, we would conduct a non-parametric Kruskal-Wallis test to test for the significance of a continuous variable between more than two groups (health boards in this case)
+
+- **STEP 3**: Copy Lines 503 to 551 from part1.R and paste beneath the code in your .R file, click the source button, These lines of code
+carries out the Kruskal-Wallis test and a significant difference is established with details by performing a Post-hoc Dunn's test to see where the statistical difference lies
+
+### PART 2 IMPLEMENTATION STEPS
+
 
