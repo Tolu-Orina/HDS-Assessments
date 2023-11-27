@@ -10,6 +10,7 @@ library(RPostgreSQL)    # To access the database.
 library(GetoptLong)     # To substitute variables into strings.
 library(tidyverse)  # To make use of the many functions available in the tidyverse
 library(ggplot2) # To create Visualizations
+library(broom) # TO Allow for tidying the statistical test results
 
 
 # Connect to the PostgreSQL Database
@@ -142,13 +143,12 @@ print(sum(total_patients_and_num_qof$field4))
 # SELECT THE NECESSARY COLUMNS FROM THE GP_DATA_UP_TO_2015 TABLE
 hb_practice_query <- "
               -- SELECT THE NECESSARY COLUMNS FROM THE GP_DATA_UP_TO_2015 TABLE
-              	select hb, practiceid, actcost, quantity, period
+              	select hb, practiceid, actcost, items, period
               	from gp_data_up_to_2015
               	where period between 201501 and 201512;
                 "
 
 # Health board name table
-# !! THIS TAKES AROUND 7 MINS OR LESS DEPENDING ON THE CPU POWER OF THE MACHINE
 hb_practice_gp_data <- dbGetQuery(con, hb_practice_query)
 
 # View(hb_practice_gp_data)
@@ -167,23 +167,22 @@ total_patients_all_hbs_and_avg_num_qof <-hb_practice_gp_data %>%
                                     select(hb, total_patients, avg_num_qof) %>%
                                     distinct()
 
-# View(total_patients_all_hbs_and_avg_num_qof)
+View(total_patients_all_hbs_and_avg_num_qof)
 
-print(sum(total_patients_all_hbs_and_avg_num_qof$total_patients))
 # And then, assuming that the actcost is the cost of a prescription,
 # we calculate the total cost of that prescription for the respective month
-# By multiplying `actcost` and `quantity` from the gp_data
+# By multiplying `actcost` and `items` from the gp_data
 # After which we get calculate the average spend for each practice per month
 avg_spend_per_practice_per_month <- hb_practice_gp_data %>%
                                       mutate(
-                                        total_cost = round((actcost * quantity), 2)
+                                        total_cost = round((actcost * items), 2)
                                         ) %>%
                                       select(hb, practiceid, period, total_cost) %>%
                                       group_by(practiceid, period) %>%
                                       summarise(avg_spend = round(mean(total_cost))) %>%
                                       ungroup()
 
-# View(avg_spend_per_practice_per_month)
+View(avg_spend_per_practice_per_month)
 
 # Next, we combine the tables for the health board name,
 # the total number of patients and total num. of Qof reported in each GP practice table,
@@ -291,11 +290,11 @@ if (is.character(healthboard)) {
 
   # Most prevalent 3 conditions in the health board
   most_prevalent_3_in_hb_df <- qof_ach_df %>%
-    select(orgcode, indicator, numerator) %>%
+    select(orgcode, indicator, field4) %>%
     inner_join(qof_df_cleaned, by="indicator") %>%
     filter(orgcode %in% pull(gp_practices_in_hb)) %>%
     group_by(area) %>%
-    summarize(prevalence = sum(numerator)) %>%
+    summarize(prevalence = sum(field4)) %>%
     arrange(desc(prevalence)) %>%
     head(3)
   
@@ -318,12 +317,12 @@ if (is.character(healthboard)) {
   
   # Most prevalent 3 conditions in each GP practice the health board
   most_prevalent_3_in_hb_in_gp_df <-qof_ach_df %>%
-                                      select(orgcode, indicator, numerator) %>%
+                                      select(orgcode, indicator, field4) %>%
                                       inner_join(qof_df_cleaned, by="indicator") %>%
                                       filter(orgcode %in% pull(gp_practices_in_hb)) %>%
                                       filter(area %in% most_prevalent_3_in_hb) %>%
                                       group_by(orgcode, area) %>%
-                                      mutate(prevalence = sum(numerator)) %>%
+                                      mutate(prevalence = sum(field4)) %>%
                                       select(orgcode, area, prevalence) %>%
                                       distinct() %>%
                                       arrange(orgcode) %>%
@@ -367,7 +366,7 @@ if (is.character(healthboard)) {
 # Write a query to get the bnf data
 bnf_query =  "
               -- load in the bnf table for the question
-              select bnfchemical, chapterdesc
+              -- select bnfchemical, subsectiondesc
               from bnf 
               "
 # BNF TABLE contains the bnf chemical and the generalized class of drug it belongs to
@@ -419,26 +418,28 @@ if (is.character(healthboard)) {
     # Health board name table for the specific practice
     hb_bnf_data <- dbGetQuery(con, hb_bnf_query)
     
+    View(hb_bnf_data)
+    
     # Mutate the Bnf code column to get the first 9 characters
     # In order to match its value in the `bnf_df` table
     drug_class_data <- hb_bnf_data %>%
                         mutate(bnfcode = substr(bnfcode, 1,9)) %>%
                         left_join(bnf_df,
                                   by = c("bnfcode" = "bnfchemical"))
+    View(drug_class_data)
     
     # Get the five most prescribed drugs for the selected gp practice
     top_5_prescriptions <- drug_class_data %>%
-                            group_by(chapterdesc) %>%
+                            group_by(subsectiondesc) %>%
                             summarise(num_prescriptions = n()) %>%
-                            arrange(desc(num_prescriptions)) %>%
-                            head(n=5) %>%
-                            mutate(chapterdesc = trimws(chapterdesc))
+                            slice_max(order_by = num_prescriptions,n=5) %>%
+                            mutate(subsectiondesc = trimws(subsectiondesc))
     
     View(top_5_prescriptions)
     
     # Plot results of the five(5) most prescribed types of drugs
     top_5_presc_plot <- ggplot(top_5_prescriptions,
-                         aes(x=chapterdesc,y=num_prescriptions)) +
+                         aes(x=subsectiondesc,y=num_prescriptions)) +
                           geom_col(color='black',fill='cyan3')+
                           labs(x='Type of Drug', y="Number of prescriptions",
                                title= qq(
@@ -471,42 +472,47 @@ if (is.character(healthboard)) {
 # SELECT THE NECESSARY COLUMNS FROM THE GP_DATA_UP_TO_2015 TABLE
 hb_test_query <- "
               -- SELECT THE NECESSARY COLUMNS FROM THE GP_DATA_UP_TO_2015 TABLE
-              	select hb, actcost, quantity, period
+              	select hb, actcost, items, period
               	from gp_data_up_to_2015
                 "
 
 # short Health board name table for test purposes
 hb_test_data <- dbGetQuery(con, hb_test_query)
-View(head(hb_test_data))
+# View(head(hb_test_data))
+
 
 # Group by Health board and period (month)
-test4 <- hb_test_data %>%
-          mutate(total_cost = round((actcost * quantity), 2)) %>%
-          select(hb, period, total_cost) %>%
-          group_by(hb, period) %>%
-          summarize(avg_gp_spend_per_month = mean(total_cost)) %>%
-          ungroup()
+avg_gp_spend_per_month_df <- hb_test_data %>%
+                              inner_join(hb_name_df,
+                                         by = c("hb" = "practiceid")) %>%
+                              rename(healthboard_name = locality) %>%
+                              select(-hb) %>%
+                              mutate(total_cost = round((actcost * items), 2)) %>%
+                              select(healthboard_name, period, total_cost) %>%
+                              group_by(healthboard_name, period) %>%
+                              summarize(avg_gp_spend_per_month = mean(total_cost)) %>%
+                              ungroup()
 
-View(test4)
+View(avg_gp_spend_per_month_df)
 
 # Does the health board explain the avg_gp_spend_per_month: 
 # We make use of a One-sided ANOVA (taking the health boards as the independent variable 
 #####                   and seeing we have more than two health boards)
 labels = hb_names
 # First: Visualize the avg_spend distribution of each health board on a boxplot
-plot_avg_spend_hbs <- ggplot(test4, aes(x=hb, y=avg_gp_spend_per_month)) + 
+plot_avg_spend_hbs <- ggplot(avg_gp_spend_per_month_df,
+                             aes(x=healthboard_name, y=avg_gp_spend_per_month)) + 
                         geom_boxplot(fill = 'darkgoldenrod1') +
                         labs(
                           title = "Average GP Practice Spend Per month for each health board",
                           x = "Health Board",
-                          y = "Average GP Practice Spend") + 
-                        scale_x_discrete(labels= hb_names) +
+                          y = "Average GP Practice Spend") +
                         theme(axis.text.x = element_text(angle = 90,
                                                          vjust= 0.8,
                                                          hjust=0.8, size=7))
 print(plot_avg_spend_hbs)
-# There seems to be a difference between the monthly spend
-# in the distributions from the plot  
+# From the plot, there seems to be a difference between the monthly spend
+# in the distributions amongst a few of the healthboards  
 
 # Secondly: Carry out an ANOVA test
 # 3 assumptions
@@ -515,33 +521,56 @@ print(plot_avg_spend_hbs)
 # 3. Variances approximately equal within each of the groups
 
 # One more visualization to help view the distributions: Histogram
-dist_plot <- ggplot(test4, aes(x=avg_gp_spend_per_month)) + 
+dist_plot <- ggplot(avg_gp_spend_per_month_df, aes(x=avg_gp_spend_per_month)) + 
               geom_histogram(fill = 'lightblue') +
-              facet_wrap(~hb, ncol=2) + 
+              facet_wrap(~ healthboard_name, ncol=2) + 
               labs(
                 title = "Distribution of Average GP spend between Health Boards",
                 )
 
+print(dist_plot)
+
 # Numerical comparison of the variance within each health board
-test4 %>%
-  group_by(hb) %>%
-  summarise(var(avg_gp_spend_per_month, na.rm = TRUE))
+num_var_btw_hb <- avg_gp_spend_per_month_df %>%
+                    group_by(healthboard_name) %>%
+                    summarise(var(avg_gp_spend_per_month, na.rm = TRUE))
+
+# View(num_var_btw_hb)
 
 # Proceed with ANOVA as the assumptions do seem to follow
-anova_model <- aov(avg_gp_spend_per_month ~ hb, data= test4)
+anova_model <- aov(avg_gp_spend_per_month ~ healthboard_name,
+                   data= avg_gp_spend_per_month_df)
 
 print("DISPLAYING THE ANOVA RESULTS ........")
 cat("\n")
-print(summary(anova_model)) # View the results
+
+options(scipen = 999) # Prevent scientific notation
+
+anova_df <- avg_gp_spend_per_month_df %>%
+              aov(avg_gp_spend_per_month ~ healthboard_name, data= .) %>%
+              tidy()
+
+View(anova_df) # View the results
 # With a sigificance level of .05, we can say that 
 # there is a statistical significance btw the avg practice spend per month
-# btw the various healthboards seeing our p-value is <2e-16 which is way below
+# btw the various healthboards seeing our p-value is less than
 # the chosen significance level of .05. Thus we reject the null hypothesis
 # that there is no difference between avg practice spend per month
 # btw the various healthboards
 cat("\n")
 # Run a Post-hoc tuckey test to see where differences lie
-print(TukeyHSD(anova_model))
+tuckey_res <- avg_gp_spend_per_month_df %>%
+                aov(avg_gp_spend_per_month ~ healthboard_name, data= .) %>%
+                TukeyHSD() %>%
+                tidy() %>%
+                arrange(adj.p.value) %>%
+                select(contrast, adj.p.value)
+View(tuckey_res) # View the tuckey results
 # From the Tuckey test, a larger proportion of the difference
-# btw various hbs are statistically significant
-
+# btw various hbs are statistically significant,
+# however the differences between some health boards doesn't seem to be significant
+# Just as observed in the boxplots, a few of the signifcant ones are;
+# - Powys Teaching HB - Cardiff & Vale University HB
+# - Powys Teaching HB - Betsi Cadwaladr University HB
+# - Powys Teaching HB - Hywel Dda HB
+# - Cwm Taf HB-Cardiff & Vale University HB
