@@ -8,7 +8,7 @@
 - Navigate into the PMIM102-submission folder in the right portion of the r-studio under files, Click on part1.R and part2.R to open them.
 - Click File on the toolbar, then click New File, and select R script, Use ctrl + S or Cmd + S to save and rename the newly created script.
 
-***Before moving on, install the following packages using install.packages("<package-name>");***
+***Before moving on, install the following packages using install.packages("package-name");***
 - RPostgreSQL
 - GetoptLong
 - Tidyverse
