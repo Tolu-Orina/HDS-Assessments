@@ -8,6 +8,15 @@
 - Navigate into the PMIM102-submission folder in the right portion in the r-studio under files, Click on part1.R and part2.R to open them.
 - Click File on the toolbar then click New File and select R script, use ctrl + S or Cmd + S to save and rename the newly created script.
 
+Before moving on, install the following packages using install.packages("<package-name>");
+- RPostgreSQL
+- GetoptLong
+- Tidyverse
+- ggplot2
+- dunn.test
+- FSA
+- broom
+
 **You are setup to start the Data Analysis of the GP Data!!!, move on to part 1 implementation steps.**
 
 ### PART 1 IMPLEMENTATION STEPS
